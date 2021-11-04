@@ -25,6 +25,9 @@ def assign_tasks_id():
 class Task:
     id=-1
     status="未执行"
+    # 重复间隔
+    repeat_interval_s = None
+
     # # 初始化任务
     # def __init__(self, name, time, func):
     #     self.name = name
@@ -33,8 +36,8 @@ class Task:
     # 创建一个任务
     def create_task(self, name, time, func):
         self.name = name
-        self.time = time
         self.func = func
+        self.update_time(time)
         self.id = assign_tasks_id()
         self.status = "未执行"
         return self
@@ -46,6 +49,50 @@ class Task:
         self.id = id
         self.status = status
         return self
+    # 更新status
+    def update_status(self, status):
+        self.status = status
+        return self
+    #更新任务时间
+    def update_time(self, input_time=None):
+        
+        if input_time == None:
+            # 当前时间加上输入时间
+            # print("input_time " + input_time)
+            if self.repeat_interval_s == None :
+                self.time = (datetime.datetime.now()).strftime("%H:%M:%S")
+                print("Please check interval")
+            else:
+                self.time = (datetime.datetime.now() + datetime.timedelta(seconds=self.repeat_interval_s)).strftime("%H:%M:%S")
+            print("更新任务时间为：" + self.time)
+
+            return self
+
+        # 如果任务执行时间是一个日期，则更新任务执行时间
+        if isinstance(input_time, datetime.datetime):
+            # print("日期" + self.time)
+            # 转换为字符串
+            self.time = input_time.strftime("%H:%M:%S")
+        # 如果任务执行时间是一个时间戳，则更新任务执行时间
+        elif isinstance(input_time, int):
+            self.repeat_interval_s = int(input_time)
+            # 当前时间加上输入时间
+            self.time = (datetime.datetime.now() + datetime.timedelta(seconds=self.repeat_interval_s)).strftime("%H:%M:%S")
+        # 如果任务执行时间是一个时间字符串，则更新任务执行时间
+        elif isinstance(self.time, str):
+            # print("字符串" + self.time)
+            # 如果是时间格式，则更新任务执行时间
+            if self.time.count(":") == 2:
+                self.time = input_time
+            else:
+                # 如果是时间戳，则更新任务执行时间
+                self.repeat_interval_s = int(input_time)
+                # 当前时间加上输入时间
+                self.time = (datetime.datetime.now() + datetime.timedelta(seconds=self.repeat_interval_s)).strftime("%H:%M:%S")
+
+
+
+        return self.time
 
 
     
@@ -91,18 +138,19 @@ def read_task():
 
 # 判断时间是否过期
 def is_expired(time):
-    # 创建一个时间对象
-    now = datetime.datetime.now().strptime(time, "%H:%M:%S")
+    # 创建一个没有日期的时间对象
+    now = datetime.datetime.now().strftime("%H:%M:%S")
+    now = datetime.datetime.now().strptime(now, "%H:%M:%S")
     # 将时间字符串转换为时间
     time = datetime.datetime.strptime(time, "%H:%M:%S")
     # 判断时间是否过期
-    if now > time:
-        #打印时间now
-        print(now)
-        #打印时间time
-        print(time)
-        # 打印时间过期
-        print("时间过期")
+    if now >= time:
+        # #打印时间now
+        # print(now)
+        # #打印时间time
+        # print(time)
+        # # 打印时间过期
+        # print("时间过期")
         return True
     else:
         return False
@@ -119,7 +167,9 @@ def sort_task():
     # 遍历任务列表
     for task in tasks:
         # 判断任务时间是否已经过期，如果过期则写入history文件中，否则写入task文件中
-        if is_expired(task.time):
+        if(task.status == "重复"):
+            save_task(task)
+        elif is_expired(task.time):
             task.status = "执行失败，已过期"
             save_task(task) 
             # save_history(task)
@@ -134,20 +184,49 @@ def add_task():
         name = input("请输入任务名称：")
         # 如果输入的任务名称为空，则提示重新输入
         if name == "":
-            print("任务名称不能为空，请重新输入！")
-            continue
+            # print("任务名称不能为空，请重新输入！")
+            # continue
+            print("直接执行程序")
 
         # 输入任务执行时间
         time = input("请输入任务执行时间，格式为： 时:分:秒：")
-        # 如果输入的任务执行时间格式不正确，则提示重新输入
-        if time.count(":") != 2:
-            print("任务执行时间格式不正确，请重新输入！")
-            continue
         
+        
+        # 如果时间信息未填写，使用默认时间
+        if time == "":
+            time = "00:00:00"
+        else:
+                # 如果输入的任务执行时间格式不正确，则提示重新输入
+            if time.count(":") != 2 and time.isdigit() == False:
+                print("任务执行时间格式不正确，请重新输入！")
+                continue
+            if time.isdigit() == True:
+                print("任务执行时间格式为数字")
+                time = time
+        
+
         # 输入任务执行函数
         func = input("请输入任务执行函数：")
+        # 任务不能为空
+        if func == "":
+            print("任务执行函数不能为空，请重新输入！")
+            continue
+
         # 创建一个任务对象
         task = Task().create_task(name, time, func)
+
+        # 输入任务状态是否为重复
+        status = input("请输入任务状态，是否重复[Y/n/'']：")
+        # 如果输入的任务状态不正确，则提示重新输入
+        if status == "y" or status == "Y" :
+            print("设置为重复任务！")
+            task.update_status("重复")
+        elif status == "n" or status == "N" or status == "":
+            print("设置为非重复任务！")
+        else:
+            print("格式错误")
+            continue
+
         # 添加任务到任务文件中
         save_task(task)
         # 显示添加成功
@@ -187,33 +266,73 @@ def scheduler():
         tasks = read_task()
         # 遍历任务列表
         for task in tasks:
-            # 获取当前时间
-            now = time.strftime("%H:%M:%S", time.localtime())
-            # 判断当前时间是否等于任务的执行时间
-            if now == task.time:
-                # # 执行任务
-                # exec(task.func)
-                # 打印任务执行信息
+            will_execute = False
+
+            # 判断时间是否是默认时间
+            if task.time == "00:00:00":
+                # 如果是默认时间，则立即执行任务
                 task.status = "正在执行"
+                will_execute = True
+            else:
+                if task.time.count(":") != 2:
+                    task.update_time(task.time)
+                    print("获取到数字任务信息：" + task.time)
+                    
+                # 如果不是是时间格式且不是默认时间，则判断是否已经过期
+                if is_expired(task.time):
+                    if(task.status == "重复"):
+                        # 如果任务状态为重复，则修改任务时间再添加到任务列表中
+                        task.update_time(task.repeat_interval_s)
+                        print("重复任务，修改时间为：" + task.time)
+                    else:
+                        # 如果任务状态不为重复，则将任务状态修改为正在执行
+                        task.status = "正在执行"
+
+                    will_execute = True
+
+            
+
+            # 如果任务状态为正在执行，则开始执行任务
+            if will_execute == True:
+
                 print("任务：" + task.func + " 假装执行成功！")
-                task.status = "执行成功"
-                # 将已执行的任务存放到历史记录文件
-                save_history(task)
-                # 删除任务
-                delete_task(task)
-                # 将任务重新排序并写入文件
-                sort_task()
+                # task.func()
+                exec(task.func)
+
+                 # 将任务信息写入历史文件
+                save_history(task)       
+                # 打印任务执行信息
+                print("任务：" + task.name + task.status + "!")
+                if(task.status != "重复"):
+                    # 将任务状态改为已执行
+                    task.status = "执行成功"
+                    # 删除任务
+                    delete_task(task)
+
+            # 更新任务信息
+            delete_task(task)
+            if(task.status == "重复"):
+                # 将任务添加到任务列表中
+                save_task(task)
+         
+            # 将任务重新排序并写入文件
+            sort_task()
+
+
+            
+
+
 
         # 每十个循环打印一次
-        if i % 10 == 0:
-            # 当前时间
-            print("系统正在运行中..." + time.strftime("%H:%M:%S", time.localtime()))
+        if i % 1 == 0:
+            # 在中断最上面一行显示当前时间
+            print("\033[s\033[0;0H \r系统正在运行中... " + time.strftime("%H:%M:%S", time.localtime()) + "\033[u", end="")
             # 将任务重新排序并写入文件
             sort_task()
             # 读取任务列表
             tasks = read_task()
             # 打印任务列表
-            # print("任务列表：")
+            print("任务列表：")
             for task in tasks:
                 print(task.name + " " + task.time)
         i=i+1

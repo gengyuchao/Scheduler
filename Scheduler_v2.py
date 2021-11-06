@@ -247,6 +247,7 @@ def run_task():
     while True:
         global SysTaskList
         SysTaskList = sort_task_list(SysTaskList)
+        task = None
         for task in SysTaskList:
             if task['status'] == "stop":
                 continue
@@ -262,7 +263,10 @@ def run_task():
             else:
                 # print("下一个任务时间："+task['name']+" "+task['time'])
                 break
-        show_next_task_info(task)
+        # 如果task 不为空
+        if task != None:
+            show_next_task_info(task)
+        # show_next_task_info(task)
         show_time()
         time.sleep(1)
 
